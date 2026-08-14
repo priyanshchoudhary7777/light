@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoltHostel — Smart Campus Energy Hub</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              900: '#064e3b',
+              950: '#022c22'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #090d16; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    
+    .tab-active {
+      background-color: #10b981 !important;
+      color: #022c22 !important;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="bg-[#070b13] text-slate-100 font-sans min-h-screen pb-16 antialiased selection:bg-emerald-500 selection:text-slate-950">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+  <!-- Top Navigation Header -->
+  <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <i data-lucide="zap" class="w-5 h-5 text-slate-950 fill-slate-950"></i>
+        </div>
+        <div>
+          <span class="text-lg font-black tracking-tight text-white flex items-center gap-1.5">
+            Volt<span class="text-emerald-400">Hostel</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-widest font-mono">Live IoT Grid</span>
+          </span>
+          <p class="text-[11px] text-slate-400 hidden sm:block">Campus Energy Optimization Engine</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs (Desktop) -->
+      <nav class="hidden md:flex items-center bg-slate-900/90 border border-slate-800 p-1 rounded-xl">
+        <button onclick="switchTab('leaderboard', this)" class="nav-tab tab-active px-4 py-1.5 text-xs rounded-lg transition-all flex items-center gap-1.5">
+          <i data-lucide="trophy" class="w-3.5 h-3.5"></i> Leaderboard
+        </button>
+        <button onclick="switchTab('heatmap', this)" class="nav-tab text-slate-400 hover:text-slate-200 px-4 py-1.5 text-xs rounded-lg transition-all flex items-center gap-1.5">
+          <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i> Floor Heatmap
+        </button>
+        <button onclick="switchTab('simulator', this)" class="nav-tab text-slate-400 hover:text-slate-200 px-4 py-1.5 text-xs rounded-lg transition-all flex items-center gap-1.5">
+          <i data-lucide="sliders" class="w-3.5 h-3.5"></i> My Room Sim
+        </button>
+        <button onclick="switchTab('quests', this)" class="nav-tab text-slate-400 hover:text-slate-200 px-4 py-1.5 text-xs rounded-lg transition-all flex items-center gap-1.5">
+          <i data-lucide="gift" class="w-3.5 h-3.5"></i> Quests & Rewards
+        </button>
+      </nav>
+
+      <!-- Live Wattage & User Profile -->
+      <div class="flex items-center gap-4">
+        <div class="hidden sm:flex flex-col items-end">
+          <div class="flex items-center gap-1.5 text-xs font-mono text-emerald-400">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="global-live-draw">138.4 kW</span> campus load
+          </div>
+          <span class="text-[10px] text-slate-500">Live IoT telemetry stream</span>
+        </div>
+
+        <div class="flex items-center gap-2 pl-3 border-l border-slate-800">
+          <div class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs text-emerald-300">
+            204
+          </div>
+          <div class="hidden lg:block text-left">
+            <div class="text-xs font-semibold text-white">Your Room (B-204)</div>
+            <div class="text-[11px] text-emerald-400 font-mono" id="user-points-badge">1,420 pts</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Mobile Tab Strip -->
+  <div class="md:hidden flex border-b border-slate-800 bg-slate-900/90 px-2 py-1.5 overflow-x-auto gap-1 sticky top-16 z-30">
+    <button onclick="switchTab('leaderboard', this)" class="nav-tab tab-active whitespace-nowrap px-3 py-1.5 text-xs rounded-lg flex items-center gap-1">
+      <i data-lucide="trophy" class="w-3.5 h-3.5"></i> Leaderboard
+    </button>
+    <button onclick="switchTab('heatmap', this)" class="nav-tab text-slate-400 whitespace-nowrap px-3 py-1.5 text-xs rounded-lg flex items-center gap-1">
+      <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i> Heatmap
+    </button>
+    <button onclick="switchTab('simulator', this)" class="nav-tab text-slate-400 whitespace-nowrap px-3 py-1.5 text-xs rounded-lg flex items-center gap-1">
+      <i data-lucide="sliders" class="w-3.5 h-3.5"></i> Simulator
+    </button>
+    <button onclick="switchTab('quests', this)" class="nav-tab text-slate-400 whitespace-nowrap px-3 py-1.5 text-xs rounded-lg flex items-center gap-1">
+      <i data-lucide="gift" class="w-3.5 h-3.5"></i> Rewards
+    </button>
+  </div>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-8">
+
+    <!-- KPI Metric Summary Row -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-sm group hover:border-emerald-500/40 transition-colors">
+        <div class="flex items-center justify-between">
+          <span class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Total Power Saved</span>
+          <div class="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-400">
+            <i data-lucide="leaf" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="mt-4">
+          <div class="text-2xl font-black text-white" id="kpi-saved">1,842.6 kWh</div>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="text-xs font-bold text-emerald-400 flex items-center gap-0.5">
+              <i data-lucide="trending-up" class="w-3 h-3"></i> +18.4%
+            </span>
+            <span class="text-xs text-slate-500">vs. last month</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-sm group hover:border-amber-500/40 transition-colors">
+        <div class="flex items-center justify-between">
+          <span class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Avg Room Draw</span>
+          <div class="p-2.5 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-400">
+            <i data-lucide="gauge" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="mt-4">
+          <div class="text-2xl font-black text-white" id="kpi-avg">46.8 kWh</div>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="text-xs font-bold text-emerald-400">-6.1%</span>
+            <span class="text-xs text-slate-500">Budget: &lt;50 kWh</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-sm group hover:border-indigo-500/40 transition-colors">
+        <div class="flex items-center justify-between">
+          <span class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Carbon Mitigated</span>
+          <div class="p-2.5 bg-indigo-500/10 rounded-xl border border-indigo-500/20 text-indigo-400">
+            <i data-lucide="cloud-rain" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="mt-4">
+          <div class="text-2xl font-black text-white" id="kpi-carbon">1,289 kg CO₂</div>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="text-xs font-bold text-indigo-400">≈ 58 Seedlings</span>
+            <span class="text-xs text-slate-500">planted</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-sm group hover:border-yellow-500/40 transition-colors">
+        <div class="flex items-center justify-between">
+          <span class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Leading Wing</span>
+          <div class="p-2.5 bg-yellow-500/10 rounded-xl border border-yellow-500/20 text-yellow-400">
+            <i data-lucide="crown" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="mt-4">
+          <div class="text-2xl font-black text-white">Block B • 2nd Flr</div>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30">98.2% Eco Rating</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 1: MAIN LEADERBOARD ==================== -->
+    <div id="tab-leaderboard" class="tab-content space-y-8">
+      
+      <!-- Top 3 Podium -->
+      <section>
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <i data-lucide="trophy" class="w-5 h-5 text-yellow-400"></i>
+              Top Eco Champions
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Top performing rooms with lowest consumption and highest reduction</p>
+          </div>
+
+          <div class="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl">
+            <button onclick="setTimeframe('daily', this)" class="timeframe-btn px-3 py-1.5 text-xs rounded-lg text-slate-400 hover:text-white">Daily</button>
+            <button onclick="setTimeframe('weekly', this)" class="timeframe-btn px-3 py-1.5 text-xs rounded-lg bg-emerald-500 text-slate-950 font-bold">Weekly</button>
+            <button onclick="setTimeframe('monthly', this)" class="timeframe-btn px-3 py-1.5 text-xs rounded-lg text-slate-400 hover:text-white">Monthly</button>
+          </div>
+        </div>
+
+        <div id="podium-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+          <!-- Injected via JavaScript -->
+        </div>
+      </section>
+
+      <!-- Analytics Charts Row -->
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- 24-Hour Curve -->
+        <div class="lg:col-span-2 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <div>
+              <h3 class="text-base font-bold text-white flex items-center gap-2">
+                <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i>
+                24-Hour Campus Consumption Profile (kW)
+              </h3>
+              <p class="text-xs text-slate-400">Comparison: Actual Draw vs. Budget Target Baseline</p>
+            </div>
+            <span class="text-xs font-mono px-2.5 py-1 rounded-lg bg-slate-800 text-emerald-400 border border-slate-700">
+              Peak: 2:00 PM (165 kW)
+            </span>
+          </div>
+          <div class="h-64">
+            <canvas id="hourlyChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Appliance Breakdown Doughnut -->
+        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm flex flex-col justify-between">
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i data-lucide="pie-chart" class="w-4 h-4 text-amber-400"></i>
+              Appliance Consumption Share
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">Average hostel room distribution</p>
+          </div>
+          <div class="h-48 my-2 flex items-center justify-center">
+            <canvas id="applianceChart"></canvas>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs text-slate-400 pt-2 border-t border-slate-800/80">
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> AC (54%)</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> Geyser (22%)</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-400"></span> Plugs (14%)</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Lighting (10%)</div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Search, Filtering & Sorting Controls -->
+      <section class="space-y-4">
+        <div class="flex flex-col lg:flex-row items-center justify-between gap-4 bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
+          
+          <!-- Search Box -->
+          <div class="relative w-full lg:w-80">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input
+              id="search-input"
+              type="text"
+              oninput="handleSearch(this.value)"
+              placeholder="Search room (e.g. 204) or resident..."
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+
+          <!-- Multi Filter Controls -->
+          <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+            <!-- Block Selection -->
+            <div class="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-1">
+              <span class="text-[11px] font-semibold text-slate-400 px-2 uppercase">Block</span>
+              <button onclick="setFilterBlock('All', this)" class="filter-block-btn px-2.5 py-1 text-xs rounded-lg bg-emerald-500/20 text-emerald-300 font-medium">All</button>
+              <button onclick="setFilterBlock('A', this)" class="filter-block-btn px-2.5 py-1 text-xs rounded-lg text-slate-400 hover:text-white">A</button>
+              <button onclick="setFilterBlock('B', this)" class="filter-block-btn px-2.5 py-1 text-xs rounded-lg text-slate-400 hover:text-white">B</button>
+              <button onclick="setFilterBlock('C', this)" class="filter-block-btn px-2.5 py-1 text-xs rounded-lg text-slate-400 hover:text-white">C</button>
+            </div>
+
+            <!-- Floor Selector -->
+            <select id="floor-select" onchange="handleFloorChange(this.value)" class="bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-xl px-3 py-2.5 focus:outline-none focus:border-emerald-500">
+              <option value="All">All Floors</option>
+              <option value="1">1st Floor</option>
+              <option value="2">2nd Floor</option>
+              <option value="3">3rd Floor</option>
+              <option value="4">4th Floor</option>
+            </select>
+
+            <!-- Sort By -->
+            <select id="sort-select" onchange="handleSortChange(this.value)" class="bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-xl px-3 py-2.5 focus:outline-none focus:border-emerald-500">
+              <option value="rank">Sort: Rank (Best first)</option>
+              <option value="consumption-low">Sort: Lowest kWh</option>
+              <option value="consumption-high">Sort: Highest kWh</option>
+              <option value="points">Sort: Eco Points</option>
+              <option value="streak">Sort: Streak Days</option>
+            </select>
+          </div>
+
+        </div>
+
+        <!-- Leaderboard Table -->
+        <div class="bg-slate-900/40 rounded-2xl border border-slate-800/80 overflow-hidden backdrop-blur-sm shadow-xl">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-800 bg-slate-900/80 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <th class="py-4 px-6">Rank</th>
+                  <th class="py-4 px-6">Room / Occupants</th>
+                  <th class="py-4 px-6">Energy Consumed</th>
+                  <th class="py-4 px-6">Saved %</th>
+                  <th class="py-4 px-6">Eco Points</th>
+                  <th class="py-4 px-6">Streak</th>
+                  <th class="py-4 px-6 text-right">Inspect</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-body" class="divide-y divide-slate-800/60 text-sm">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+          
+          <div id="empty-state" class="hidden py-12 text-center">
+            <i data-lucide="search-x" class="w-12 h-12 text-slate-600 mx-auto mb-3"></i>
+            <p class="text-slate-300 font-semibold">No matching hostel rooms found</p>
+            <p class="text-xs text-slate-500 mt-1">Try clearing filters or checking room number spelling.</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ==================== TAB 2: FLOOR HEATMAP ==================== -->
+    <div id="tab-heatmap" class="tab-content hidden space-y-6">
+      <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <i data-lucide="layout-grid" class="w-5 h-5 text-emerald-400"></i>
+              Hostel Floor Energy Grid Heatmap
+            </h2>
+            <p class="text-xs text-slate-400 mt-1">Real-time room status matrix. Click any room cell to view smart sensor telemetry.</p>
+          </div>
+          
+          <!-- Legend -->
+          <div class="flex items-center gap-4 text-xs font-medium">
+            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-500"></span> Efficient (&lt;45 kWh)</div>
+            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-amber-500"></span> Moderate (45-55 kWh)</div>
+            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-rose-500"></span> High Draw (&gt;55 kWh)</div>
+          </div>
+        </div>
+
+        <div class="space-y-8 mt-6" id="heatmap-container">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 3: SMART METER SIMULATOR ==================== -->
+    <div id="tab-simulator" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Controls -->
+        <div class="lg:col-span-2 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6">
+          <div>
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold mb-2">
+              <i data-lucide="cpu" class="w-3.5 h-3.5"></i> Interactive Digital Twin
+            </div>
+            <h2 class="text-2xl font-black text-white">Room 204 Smart Socket Simulator</h2>
+            <p class="text-sm text-slate-400 mt-1">
+              Toggle virtual appliances in your room to see instantaneous impact on your live wattage, weekly forecast, and leaderboard position in real time!
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            <!-- AC Toggle -->
+            <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  <i data-lucide="snowflake" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-sm text-white">Dual Inverter AC (24°C)</div>
+                  <div class="text-xs text-slate-400">Consumes ≈ 1,200W</div>
+                </div>
+              </div>
+              <input type="checkbox" id="sim-ac" checked onchange="runSimulation()" class="w-5 h-5 accent-emerald-500 cursor-pointer">
+            </div>
+
+            <!-- Lighting -->
+            <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <i data-lucide="lightbulb" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-sm text-white">LED Study Lamps & Ceiling</div>
+                  <div class="text-xs text-slate-400">Consumes ≈ 80W</div>
+                </div>
+              </div>
+              <input type="checkbox" id="sim-lights" checked onchange="runSimulation()" class="w-5 h-5 accent-emerald-500 cursor-pointer">
+            </div>
+
+            <!-- Gaming Laptop / Desktop -->
+            <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  <i data-lucide="laptop" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-sm text-white">Laptop & Monitor Plugs</div>
+                  <div class="text-xs text-slate-400">Consumes ≈ 230W</div>
+                </div>
+              </div>
+              <input type="checkbox" id="sim-laptop" checked onchange="runSimulation()" class="w-5 h-5 accent-emerald-500 cursor-pointer">
+            </div>
+
+            <!-- Water Geyser -->
+            <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                  <i data-lucide="flame" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-sm text-white">Bathroom Instant Geyser</div>
+                  <div class="text-xs text-slate-400">Consumes ≈ 2,000W</div>
+                </div>
+              </div>
+              <input type="checkbox" id="sim-geyser" onchange="runSimulation()" class="w-5 h-5 accent-emerald-500 cursor-pointer">
+            </div>
+
+          </div>
+
+          <div class="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <i data-lucide="sparkles" class="w-5 h-5 text-emerald-400"></i>
+              <span class="text-xs text-slate-300">Tip: Turning off idle appliances directly boosts your leaderboard rank!</span>
+            </div>
+            <button onclick="optimizeAll()" class="text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 px-3 py-1.5 rounded-lg transition-colors">
+              Auto-Eco Mode
+            </button>
+          </div>
+        </div>
+
+        <!-- Telemetry Gauges Card -->
+        <div class="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+          <div>
+            <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Simulated Telemetry</h3>
+            <div class="mt-4 p-5 bg-slate-950 rounded-2xl border border-slate-800 text-center">
+              <span class="text-xs text-slate-500 uppercase font-mono">Real-time Draw</span>
+              <div class="text-4xl font-black text-emerald-400 font-mono mt-1" id="sim-live-watts">1,510 W</div>
+              <div class="text-[11px] text-slate-400 mt-1" id="sim-status-text">Operating efficiently</div>
+            </div>
+
+            <div class="space-y-3 mt-4 text-xs">
+              <div class="flex justify-between py-2 border-b border-slate-800/80">
+                <span class="text-slate-400">Forecasted Weekly Use</span>
+                <span class="font-bold text-white font-mono" id="sim-weekly-kwh">42.5 kWh</span>
+              </div>
+              <div class="flex justify-between py-2 border-b border-slate-800/80">
+                <span class="text-slate-400">Estimated Leaderboard Rank</span>
+                <span class="font-bold text-amber-400" id="sim-rank-forecast">#1 on Floor 2</span>
+              </div>
+              <div class="flex justify-between py-2">
+                <span class="text-slate-400">Carbon Cost per Day</span>
+                <span class="font-bold text-slate-300 font-mono" id="sim-carbon-forecast">1.4 kg CO₂</span>
+              </div>
+            </div>
+          </div>
+
+          <button onclick="commitSimulation()" class="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> Apply Eco-Config to Room
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==================== TAB 4: QUESTS & REWARDS ==================== -->
+    <div id="tab-quests" class="tab-content hidden space-y-8">
+      
+      <!-- Quests Section -->
+      <section>
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <i data-lucide="target" class="w-5 h-5 text-emerald-400"></i>
+              Weekly Campus Energy Quests
+            </h2>
+            <p class="text-xs text-slate-400">Complete challenges with your roommates to earn instant Eco-Points</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="quests-container">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- Rewards Store -->
+      <section class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <i data-lucide="store" class="w-5 h-5 text-indigo-400"></i>
+              Eco-Points Redemption Marketplace
+            </h2>
+            <p class="text-xs text-slate-400 mt-1">Convert your conservation points into real campus vouchers & amenities</p>
+          </div>
+          <div class="bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 text-right">
+            <span class="text-[10px] text-slate-400 block uppercase font-mono">Your Balance</span>
+            <span class="text-lg font-black text-indigo-400" id="store-points-balance">1,420 Points</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6" id="rewards-container">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- ==================== ROOM INSPECTION MODAL ==================== -->
+  <div id="room-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl relative">
+      <button onclick="closeRoomModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-4">
+        <div id="modal-rank-badge" class="w-14 h-14 rounded-2xl bg-amber-400/20 text-amber-300 border border-amber-400/30 flex items-center justify-center font-black text-2xl">
+          #1
+        </div>
+        <div>
+          <h3 class="text-xl font-bold text-white" id="modal-room-name">Room 204 (Block B)</h3>
+          <p class="text-xs text-slate-400" id="modal-occupants">Occupants: Arjun, Leo, Sameer</p>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="grid grid-cols-3 gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800 text-center">
+        <div>
+          <span class="text-[11px] text-slate-500 uppercase">Consumption</span>
+          <div class="text-lg font-bold text-white" id="modal-consumption">42.5 kWh</div>
+        </div>
+        <div>
+          <span class="text-[11px] text-slate-500 uppercase">Reduction</span>
+          <div class="text-lg font-bold text-emerald-400" id="modal-reduction">+28.4%</div>
+        </div>
+        <div>
+          <span class="text-[11px] text-slate-500 uppercase">Streak</span>
+          <div class="text-lg font-bold text-orange-400" id="modal-streak">12 Days 🔥</div>
+        </div>
+      </div>
+
+      <!-- Modal Appliance breakdown bars -->
+      <div class="space-y-3">
+        <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sub-Meter Appliance Load Breakdown</h4>
+        <div>
+          <div class="flex justify-between text-xs font-medium mb-1">
+            <span class="text-slate-300">Air Conditioner</span>
+            <span class="text-emerald-400 font-mono">42% load</span>
+          </div>
+          <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+            <div class="bg-cyan-400 h-full rounded-full" style="width: 42%"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between text-xs font-medium mb-1">
+            <span class="text-slate-300">Water Geyser</span>
+            <span class="text-amber-400 font-mono">24% load</span>
+          </div>
+          <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+            <div class="bg-amber-400 h-full rounded-full" style="width: 24%"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between text-xs font-medium mb-1">
+            <span class="text-slate-300">Wall Plugs & Laptops</span>
+            <span class="text-indigo-400 font-mono">20% load</span>
+          </div>
+          <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+            <div class="bg-indigo-400 h-full rounded-full" style="width: 20%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-4 border-t border-slate-800">
+        <button onclick="sendNudgeMessage()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded-xl transition-colors flex items-center gap-1.5">
+          <i data-lucide="bell" class="w-3.5 h-3.5"></i> Send Friendly Nudge
+        </button>
+        <button onclick="closeRoomModal()" class="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl transition-colors">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== JAVASCRIPT ENGINE ==================== -->
+  <script>
+    // In-memory Database & Application State
+    let userPoints = 1420;
+    let selectedTimeframe = 'weekly';
+    let filterBlock = 'All';
+    let filterFloor = 'All';
+    let sortBy = 'rank';
+    let searchQuery = '';
+
+    const roomsDataset = [
+      {
+        id: "B-204",
+        name: "Room 204",
+        block: "B",
+        floor: 2,
+        residents: ["Arjun", "Leo", "Sameer"],
+        consumption: 42.5,
+        liveWatts: 1450,
+        savedPercent: 28.4,
+        trend: 'up',
+        trendValue: '+4.2%',
+        points: 1420,
+        streak: 12,
+        badge: 'Eco Champion',
+        category: 'Double AC'
+      },
+      {
+        id: "A-102",
+        name: "Room 102",
+        block: "A",
+        floor: 1,
+        residents: ["Priya", "Ananya"],
+        consumption: 48.2,
+        liveWatts: 820,
+        savedPercent: 22.1,
+        trend: 'up',
+        trendValue: '+2.0%',
+        points: 1280,
+        streak: 8,
+        badge: 'Power Saver',
+        category: 'Non-AC'
+      },
+      {
+        id: "C-315",
+        name: "Room 315",
+        block: "C",
+        floor: 3,
+        residents: ["Karan", "David", "Rohan"],
+        consumption: 51.0,
+        liveWatts: 2850,
+        savedPercent: 18.5,
+        trend: 'down',
+        trendValue: '-1.5%',
+        points: 1150,
+        streak: 5,
+        badge: 'Watt Watcher',
+        category: 'Triple AC'
+      },
+      {
+        id: "B-108",
+        name: "Room 108",
+        block: "B",
+        floor: 1,
+        residents: ["Neha", "Sneha"],
+        consumption: 56.4,
+        liveWatts: 650,
+        savedPercent: 14.2,
+        trend: 'up',
+        trendValue: '+3.1%',
+        points: 980,
+        streak: 3,
+        badge: 'Green Sprout',
+        category: 'Non-AC'
+      },
+      {
+        id: "A-401",
+        name: "Room 401",
+        block: "A",
+        floor: 4,
+        residents: ["Vikram", "Aditya"],
+        consumption: 62.0,
+        liveWatts: 1820,
+        savedPercent: 9.8,
+        trend: 'down',
+        trendValue: '-5.2%',
+        points: 820,
+        streak: 1,
+        badge: 'Steady Saver',
+        category: 'Double AC'
+      },
+      {
+        id: "C-209",
+        name: "Room 209",
+        block: "C",
+        floor: 2,
+        residents: ["Rahul", "Farhan"],
+        consumption: 68.3,
+        liveWatts: 3400,
+        savedPercent: 4.1,
+        trend: 'down',
+        trendValue: '-8.0%',
+        points: 690,
+        streak: 0,
+        badge: 'Conserver',
+        category: 'Double AC'
+      },
+      {
+        id: "B-302",
+        name: "Room 302",
+        block: "B",
+        floor: 3,
+        residents: ["Tanya", "Meera"],
+        consumption: 44.1,
+        liveWatts: 1200,
+        savedPercent: 24.8,
+        trend: 'up',
+        trendValue: '+5.1%',
+        points: 1310,
+        streak: 9,
+        badge: 'Eco Star',
+        category: 'Double AC'
+      },
+      {
+        id: "A-205",
+        name: "Room 205",
+        block: "A",
+        floor: 2,
+        residents: ["Kabir", "Zain"],
+        consumption: 71.2,
+        liveWatts: 3800,
+        savedPercent: 1.2,
+        trend: 'down',
+        trendValue: '-12.4%',
+        points: 540,
+        streak: 0,
+        badge: 'High Draw',
+        category: 'Triple AC'
+      }
+    ];
+
+    const questsList = [
+      {
+        id: 'q1',
+        title: 'AC 24°C Comfort Zone',
+        desc: 'Keep air conditioner thermostat above 24°C for 3 consecutive days.',
+        reward: 150,
+        claimed: false,
+        icon: 'snowflake'
+      },
+      {
+        id: 'q2',
+        title: 'Standby Power Zero',
+        desc: 'Unplug all chargers & power strips before 9:00 AM lectures.',
+        reward: 100,
+        claimed: false,
+        icon: 'power-off'
+      },
+      {
+        id: 'q3',
+        title: 'Natural Light Study Hour',
+        desc: 'Use daylight instead of desk lamps from 1:00 PM to 4:00 PM.',
+        reward: 80,
+        claimed: true,
+        icon: 'sun'
+      }
+    ];
+
+    const rewardsCatalog = [
+      {
+        id: 'r1',
+        title: 'Free Espresso Coupon',
+        vendor: 'Campus Cafe Central',
+        cost: 300,
+        icon: 'coffee'
+      },
+      {
+        id: 'r2',
+        title: 'Express Laundry Token',
+        vendor: 'Hostel Laundromat Wing A',
+        cost: 500,
+        icon: 'shirt'
+      },
+      {
+        id: 'r3',
+        title: 'Priority Quiet Study Pod',
+        vendor: 'Main Campus Library',
+        cost: 450,
+        icon: 'book-open'
+      },
+      {
+        id: 'r4',
+        title: '₹200 Canteen Food Credit',
+        vendor: 'Hostel Night Mess',
+        cost: 800,
+        icon: 'utensils'
+      }
+    ];
+
+    // --- Toast Notifications ---
+    function showToast(title, desc, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto flex items-start gap-3 bg-slate-900 border ${
+        type === 'success' ? 'border-emerald-500/50 text-emerald-400' : 'border-amber-500/50 text-amber-400'
+      } p-4 rounded-2xl shadow-2xl backdrop-blur-md max-w-sm transition-all transform duration-300 translate-y-2 opacity-0`;
+
+      toast.innerHTML = `
+        <div class="p-1 rounded-lg bg-slate-800">
+          <i data-lucide="${type === 'success' ? 'check-circle' : 'info'}" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h4 class="text-sm font-bold text-white">${title}</h4>
+          <p class="text-xs text-slate-400 mt-0.5">${desc}</p>
+        </div>
+      `;
+
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 50);
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // --- Tab Navigation ---
+    function switchTab(tabId, el) {
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        btn.classList.remove('tab-active');
+        btn.classList.add('text-slate-400');
+      });
+
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+      el.classList.add('tab-active');
+      el.classList.remove('text-slate-400');
+
+      if (tabId === 'heatmap') renderHeatmap();
+      if (tabId === 'quests') renderQuestsAndRewards();
+      lucide.createIcons();
+    }
+
+    // --- Filter & Sort Engine ---
+    function getProcessedRooms() {
+      let list = [...roomsDataset];
+
+      if (filterBlock !== 'All') {
+        list = list.filter(r => r.block === filterBlock);
+      }
+      if (filterFloor !== 'All') {
+        list = list.filter(r => r.floor.toString() === filterFloor);
+      }
+      if (searchQuery.trim() !== '') {
+        const q = searchQuery.toLowerCase();
+        list = list.filter(r => 
+          r.name.toLowerCase().includes(q) ||
+          r.id.toLowerCase().includes(q) ||
+          r.residents.some(resident => resident.toLowerCase().includes(q))
+        );
+      }
+
+      if (sortBy === 'rank' || sortBy === 'consumption-low') {
+        list.sort((a, b) => a.consumption - b.consumption);
+      } else if (sortBy === 'consumption-high') {
+        list.sort((a, b) => b.consumption - a.consumption);
+      } else if (sortBy === 'points') {
+        list.sort((a, b) => b.points - a.points);
+      } else if (sortBy === 'streak') {
+        list.sort((a, b) => b.streak - a.streak);
+      }
+
+      return list.map((room, index) => ({
+        ...room,
+        displayRank: index + 1
+      }));
+    }
+
+    // --- Render Top 3 Podium ---
+    function renderPodium(items) {
+      const container = document.getElementById('podium-container');
+      container.innerHTML = '';
+
+      if (items.length < 3) {
+        container.innerHTML = `<div class="col-span-3 text-center text-slate-500 py-6 text-sm">Need at least 3 matching rooms to display top podium.</div>`;
+        return;
+      }
+
+      const podiumOrder = [items[1], items[0], items[2]];
+
+      podiumOrder.forEach(room => {
+        const isFirst = room.displayRank === 1;
+        const rankStyles = {
+          1: 'bg-amber-400/20 text-amber-300 border-amber-400/30 shadow-amber-500/10',
+          2: 'bg-slate-300/20 text-slate-300 border-slate-300/30',
+          3: 'bg-amber-700/20 text-amber-500 border-amber-600/30'
+        };
+
+        const card = document.createElement('div');
+        card.className = `relative border rounded-3xl p-6 flex flex-col justify-between items-center text-center backdrop-blur-md transition-all duration-300 hover:-translate-y-1.5 cursor-pointer ${
+          isFirst 
+            ? 'from-emerald-950/40 via-slate-900/90 to-slate-900 border-emerald-500/40 shadow-2xl shadow-emerald-950/50 bg-gradient-to-b md:-translate-y-3' 
+            : 'from-slate-800/40 to-slate-900/80 border-slate-800 bg-gradient-to-b'
+        }`;
+        card.onclick = () => openRoomModal(room.id);
+
+        card.innerHTML = `
+          ${isFirst ? `
+            <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 px-3.5 py-1 rounded-full text-xs font-black flex items-center gap-1.5 shadow-lg shadow-amber-400/30">
+              <i data-lucide="crown" class="w-3.5 h-3.5 fill-slate-950"></i> #1 ECO CHAMPION
+            </div>
+          ` : ''}
+
+          <div class="mt-2 w-full">
+            <div class="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center font-black text-lg border ${rankStyles[room.displayRank]}">
+              ${room.displayRank}
+            </div>
+            <h3 class="text-base font-bold text-white mt-3 truncate">${room.name} (Block ${room.block})</h3>
+            <p class="text-xs text-slate-400 mt-0.5 truncate">${room.residents.join(' • ')}</p>
+          </div>
+
+          <div class="w-full bg-slate-950/60 rounded-2xl p-3.5 my-4 border border-slate-800/60 space-y-2 text-xs">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Total Consumption</span>
+              <span class="font-bold text-white font-mono">${room.consumption} kWh</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Energy Reduced</span>
+              <span class="font-bold text-emerald-400">+${room.savedPercent}%</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Live Socket Load</span>
+              <span class="font-bold text-emerald-400 font-mono">${room.liveWatts} W</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-1.5 text-xs font-semibold text-orange-400 bg-orange-500/10 px-3 py-1.5 rounded-xl border border-orange-500/20">
+            <i data-lucide="flame" class="w-3.5 h-3.5 fill-orange-400"></i>
+            <span>${room.streak} Days Streak</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // --- Render Table ---
+    function renderTable(items) {
+      const tbody = document.getElementById('leaderboard-body');
+      const emptyState = document.getElementById('empty-state');
+      tbody.innerHTML = '';
+
+      if (items.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      items.forEach(room => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/30 transition-colors cursor-pointer group';
+        tr.onclick = (e) => {
+          if (!e.target.closest('button')) openRoomModal(room.id);
+        };
+
+        const rankBadge = 
+          room.displayRank === 1 ? 'bg-amber-400/20 text-amber-300 border-amber-400/30' :
+          room.displayRank === 2 ? 'bg-slate-400/20 text-slate-300 border-slate-400/30' :
+          room.displayRank === 3 ? 'bg-amber-700/20 text-amber-500 border-amber-600/30' :
+          'bg-slate-800 text-slate-400 border-slate-700';
+
+        tr.innerHTML = `
+          <td class="py-4 px-6">
+            <span class="w-7 h-7 flex items-center justify-center rounded-lg font-bold text-xs border ${rankBadge}">
+              ${room.displayRank}
+            </span>
+          </td>
+          <td class="py-4 px-6">
+            <div>
+              <div class="font-semibold text-slate-100 flex items-center gap-2">
+                ${room.name} (Block ${room.block})
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-normal">
+                  Flr ${room.floor} • ${room.category}
+                </span>
+              </div>
+              <div class="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+                <i data-lucide="users" class="w-3 h-3 text-slate-500"></i>
+                ${room.residents.join(', ')}
+              </div>
+            </div>
+          </td>
+          <td class="py-4 px-6">
+            <div>
+              <div class="flex items-baseline gap-1 font-bold text-slate-200 font-mono">
+                ${room.consumption} <span class="text-xs font-normal text-slate-400">kWh</span>
+              </div>
+              <div class="w-28 bg-slate-800 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                <div class="bg-emerald-400 h-full rounded-full" style="width: ${Math.min(100, Math.max(10, 100 - room.consumption))}%"></div>
+              </div>
+            </div>
+          </td>
+          <td class="py-4 px-6">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-emerald-400">+${room.savedPercent}%</span>
+              <span class="inline-flex items-center text-xs font-medium ${room.trend === 'up' ? 'text-emerald-400' : 'text-rose-400'}">
+                <i data-lucide="${room.trend === 'up' ? 'arrow-up-right' : 'arrow-down-right'}" class="w-3.5 h-3.5"></i>
+                ${room.trendValue}
+              </span>
+            </div>
+          </td>
+          <td class="py-4 px-6">
+            <div class="font-bold text-indigo-400 font-mono">${room.points} pts</div>
+            <div class="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+              <i data-lucide="shield-check" class="w-3 h-3 text-indigo-400"></i>
+              ${room.badge}
+            </div>
+          </td>
+          <td class="py-4 px-6">
+            <div class="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/50 w-fit text-xs font-semibold text-slate-200">
+              <i data-lucide="flame" class="w-3.5 h-3.5 ${room.streak > 0 ? 'text-orange-400 fill-orange-400' : 'text-slate-600'}"></i>
+              ${room.streak} d
+            </div>
+          </td>
+          <td class="py-4 px-6 text-right">
+            <button onclick="openRoomModal('${room.id}')" class="p-2 rounded-xl bg-slate-800/80 hover:bg-emerald-500 hover:text-slate-950 text-slate-300 transition-all border border-slate-700">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // --- Render Floor Heatmap ---
+    function renderHeatmap() {
+      const container = document.getElementById('heatmap-container');
+      container.innerHTML = '';
+
+      ['Block A', 'Block B', 'Block C'].forEach(blockName => {
+        const blockLetter = blockName.split(' ')[1];
+        const blockRooms = roomsDataset.filter(r => r.block === blockLetter);
+
+        const blockCard = document.createElement('div');
+        blockCard.className = 'bg-slate-950 p-5 rounded-2xl border border-slate-800/80';
+        blockCard.innerHTML = `
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="building" class="w-4 h-4 text-emerald-400"></i> ${blockName} Residential Matrix
+            </h3>
+            <span class="text-xs text-slate-500 font-mono">${blockRooms.length} Smart Sensors Online</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3" id="heatmap-grid-${blockLetter}"></div>
+        `;
+
+        container.appendChild(blockCard);
+        const grid = blockCard.querySelector(`#heatmap-grid-${blockLetter}`);
+
+        blockRooms.forEach(room => {
+          let statusBg = 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:border-emerald-400';
+          let statusDot = 'bg-emerald-400';
+          if (room.consumption > 60) {
+            statusBg = 'bg-rose-500/10 border-rose-500/30 text-rose-300 hover:border-rose-400';
+            statusDot = 'bg-rose-400';
+          } else if (room.consumption > 48) {
+            statusBg = 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:border-amber-400';
+            statusDot = 'bg-amber-400';
+          }
+
+          const cell = document.createElement('div');
+          cell.className = `p-3 rounded-xl border ${statusBg} transition-all cursor-pointer hover:scale-105 flex flex-col justify-between h-24`;
+          cell.onclick = () => openRoomModal(room.id);
+          cell.innerHTML = `
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-xs">${room.id}</span>
+              <span class="w-2 h-2 rounded-full ${statusDot}"></span>
+            </div>
+            <div>
+              <div class="text-base font-black font-mono">${room.consumption}<span class="text-[10px] font-normal">kWh</span></div>
+              <div class="text-[10px] opacity-80 mt-0.5">Flr ${room.floor} • ${room.liveWatts}W</div>
+            </div>
+          `;
+          grid.appendChild(cell);
+        });
+      });
+    }
+
+    // --- Quests & Rewards Hub ---
+    function renderQuestsAndRewards() {
+      const qContainer = document.getElementById('quests-container');
+      qContainer.innerHTML = '';
+      questsList.forEach(quest => {
+        const qCard = document.createElement('div');
+        qCard.className = `p-5 rounded-2xl border ${quest.claimed ? 'bg-slate-950/40 border-slate-800/50 opacity-60' : 'bg-slate-900/60 border-slate-800'} flex flex-col justify-between`;
+        qCard.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                <i data-lucide="${quest.icon}" class="w-4 h-4"></i>
+              </div>
+              <span class="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">+${quest.reward} pts</span>
+            </div>
+            <h4 class="font-bold text-sm text-white">${quest.title}</h4>
+            <p class="text-xs text-slate-400 mt-1">${quest.desc}</p>
+          </div>
+          <button 
+            onclick="claimQuest('${quest.id}')" 
+            ${quest.claimed ? 'disabled' : ''}
+            class="mt-4 w-full py-2 rounded-xl text-xs font-bold transition-all ${
+              quest.claimed 
+                ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
+                : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20'
+            }"
+          >
+            ${quest.claimed ? 'Claimed ✓' : 'Complete & Claim'}
+          </button>
+        `;
+        qContainer.appendChild(qCard);
+      });
+
+      const rContainer = document.getElementById('rewards-container');
+      rContainer.innerHTML = '';
+      rewardsCatalog.forEach(reward => {
+        const rCard = document.createElement('div');
+        rCard.className = 'p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between';
+        rCard.innerHTML = `
+          <div>
+            <div class="p-3 w-fit rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-3">
+              <i data-lucide="${reward.icon}" class="w-5 h-5"></i>
+            </div>
+            <h4 class="font-bold text-sm text-white">${reward.title}</h4>
+            <span class="text-xs text-slate-500">${reward.vendor}</span>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
+            <span class="font-mono text-sm font-bold text-indigo-400">${reward.cost} pts</span>
+            <button onclick="redeemReward('${reward.id}', ${reward.cost})" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition-colors">
+              Redeem
+            </button>
+          </div>
+        `;
+        rContainer.appendChild(rCard);
+      });
+
+      document.getElementById('store-points-balance').innerText = `${userPoints} Points`;
+      document.getElementById('user-points-badge').innerText = `${userPoints} pts`;
+    }
+
+    function claimQuest(questId) {
+      const q = questsList.find(item => item.id === questId);
+      if (q && !q.claimed) {
+        q.claimed = true;
+        userPoints += q.reward;
+        showToast('Quest Completed!', `+${q.reward} Eco-Points added to Room 204.`);
+        renderQuestsAndRewards();
+      }
+    }
+
+    function redeemReward(rewardId, cost) {
+      if (userPoints >= cost) {
+        userPoints -= cost;
+        showToast('Reward Claimed!', 'Your campus coupon code has been sent to your email.');
+        renderQuestsAndRewards();
+      } else {
+        showToast('Insufficient Points', 'Conserve more energy this week to unlock this perk.', 'info');
+      }
+    }
+
+    // --- Digital Twin Socket Simulator ---
+    function runSimulation() {
+      const ac = document.getElementById('sim-ac').checked;
+      const lights = document.getElementById('sim-lights').checked;
+      const laptop = document.getElementById('sim-laptop').checked;
+      const geyser = document.getElementById('sim-geyser').checked;
+
+      let watts = 50;
+      if (ac) watts += 1200;
+      if (lights) watts += 80;
+      if (laptop) watts += 230;
+      if (geyser) watts += 2000;
+
+      document.getElementById('sim-live-watts').innerText = `${watts.toLocaleString()} W`;
+      
+      const weeklyKwh = ((watts * 6 * 7) / 1000).toFixed(1);
+      document.getElementById('sim-weekly-kwh').innerText = `${weeklyKwh} kWh`;
+
+      const carbon = ((watts * 24 * 0.00085) / 1000).toFixed(2);
+      document.getElementById('sim-carbon-forecast').innerText = `${carbon} kg CO₂`;
+
+      const statusEl = document.getElementById('sim-status-text');
+      const rankForecast = document.getElementById('sim-rank-forecast');
+
+      // Update Room 204 in database dynamically
+      const room204 = roomsDataset.find(r => r.id === 'B-204');
+      room204.liveWatts = watts;
+      room204.consumption = +(35 + (watts / 85)).toFixed(1);
+
+      if (watts > 2500) {
+        statusEl.innerText = 'High Demand Spike';
+        statusEl.className = 'text-[11px] text-rose-400 mt-1';
+        rankForecast.innerText = '#6 (Rank Drop)';
+      } else if (watts > 1200) {
+        statusEl.innerText = 'Normal Load';
+        statusEl.className = 'text-[11px] text-amber-400 mt-1';
+        rankForecast.innerText = '#2 on Floor';
+      } else {
+        statusEl.innerText = 'Ultra Eco-Friendly';
+        statusEl.className = 'text-[11px] text-emerald-400 mt-1';
+        rankForecast.innerText = '#1 Eco Champion!';
+      }
+
+      updateLeaderboardView();
+    }
+
+    function optimizeAll() {
+      document.getElementById('sim-ac').checked = true;
+      document.getElementById('sim-lights').checked = true;
+      document.getElementById('sim-laptop').checked = false;
+      document.getElementById('sim-geyser').checked = false;
+      runSimulation();
+      showToast('Eco Config Applied', 'Vampire loads eliminated & geyser turned off.');
+    }
+
+    function commitSimulation() {
+      showToast('Config Deployed!', 'Target settings synced with Room 204 IoT sub-meter.');
+    }
+
+    // --- Modal Handler ---
+    function openRoomModal(roomId) {
+      const room = roomsDataset.find(r => r.id === roomId);
+      if (!room) return;
+
+      document.getElementById('modal-rank-badge').innerText = `#${room.displayRank || 1}`;
+      document.getElementById('modal-room-name').innerText = `${room.name} (Block ${room.block})`;
+      document.getElementById('modal-occupants').innerText = `Occupants: ${room.residents.join(', ')}`;
+      document.getElementById('modal-consumption').innerText = `${room.consumption} kWh`;
+      document.getElementById('modal-reduction').innerText = `+${room.savedPercent}%`;
+      document.getElementById('modal-streak').innerText = `${room.streak} Days 🔥`;
+
+      document.getElementById('room-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeRoomModal() {
+      document.getElementById('room-modal').classList.add('hidden');
+    }
+
+    function sendNudgeMessage() {
+      showToast('Eco-Nudge Sent', 'Sent a friendly reminder notification to the room occupants.');
+      closeRoomModal();
+    }
+
+    // --- Search & Filter Handlers ---
+    function handleSearch(val) {
+      searchQuery = val;
+      updateLeaderboardView();
+    }
+
+    function setFilterBlock(block, btn) {
+      filterBlock = block;
+      document.querySelectorAll('.filter-block-btn').forEach(b => {
+        b.className = 'filter-block-btn px-2.5 py-1 text-xs rounded-lg text-slate-400 hover:text-white';
+      });
+      btn.className = 'filter-block-btn px-2.5 py-1 text-xs rounded-lg bg-emerald-500/20 text-emerald-300 font-medium';
+      updateLeaderboardView();
+    }
+
+    function handleFloorChange(val) {
+      filterFloor = val;
+      updateLeaderboardView();
+    }
+
+    function handleSortChange(val) {
+      sortBy = val;
+      updateLeaderboardView();
+    }
+
+    function setTimeframe(period, btn) {
+      selectedTimeframe = period;
+      document.querySelectorAll('.timeframe-btn').forEach(b => {
+        b.className = 'timeframe-btn px-3 py-1.5 text-xs rounded-lg text-slate-400 hover:text-white';
+      });
+      btn.className = 'timeframe-btn px-3 py-1.5 text-xs rounded-lg bg-emerald-500 text-slate-950 font-bold';
+      
+      const savedKpi = document.getElementById('kpi-saved');
+      if (period === 'daily') savedKpi.innerText = '248.1 kWh';
+      else if (period === 'weekly') savedKpi.innerText = '1,842.6 kWh';
+      else if (period === 'monthly') savedKpi.innerText = '7,920.0 kWh';
+
+      updateLeaderboardView();
+    }
+
+    function updateLeaderboardView() {
+      const items = getProcessedRooms();
+      renderPodium(items);
+      renderTable(items);
+      lucide.createIcons();
+    }
+
+    // --- Chart.js Initializations ---
+    function initCharts() {
+      const ctxHourly = document.getElementById('hourlyChart').getContext('2d');
+      new Chart(ctxHourly, {
+        type: 'line',
+        data: {
+          labels: ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00', '23:59'],
+          datasets: [
+            {
+              label: 'Actual Draw (kW)',
+              data: [65, 50, 78, 120, 155, 165, 140, 175, 110],
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              fill: true,
+              tension: 0.4,
+              borderWidth: 2,
+              pointBackgroundColor: '#10b981'
+            },
+            {
+              label: 'Target Baseline (kW)',
+              data: [80, 80, 80, 130, 140, 140, 130, 150, 100],
+              borderColor: '#64748b',
+              borderDash: [5, 5],
+              fill: false,
+              tension: 0.2,
+              borderWidth: 1.5,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#94a3b8', font: { size: 11 } } }
+          },
+          scales: {
+            y: {
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#64748b', font: { size: 10 } }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#64748b', font: { size: 10 } }
+            }
+          }
+        }
+      });
+
+      const ctxAppliance = document.getElementById('applianceChart').getContext('2d');
+      new Chart(ctxAppliance, {
+        type: 'doughnut',
+        data: {
+          labels: ['AC', 'Geyser', 'Plugs', 'Lighting'],
+          datasets: [{
+            data: [54, 22, 14, 10],
+            backgroundColor: ['#34d399', '#22d3ee', '#818cf8', '#fbbf24'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          cutout: '72%'
+        }
+      });
+    }
+
+    // --- Background IoT Telemetry Simulation Loop ---
+    // Every 4 seconds, introduce realistic minor fluctuations to simulated grid sensors
+    setInterval(() => {
+      let totalWatts = 0;
+      roomsDataset.forEach(room => {
+        if (room.id !== 'B-204') {
+          const delta = Math.floor(Math.random() * 50) - 25;
+          room.liveWatts = Math.max(80, room.liveWatts + delta);
+        }
+        totalWatts += room.liveWatts;
+      });
+
+      document.getElementById('global-live-draw').innerText = `${(totalWatts / 1000 + 120).toFixed(1)} kW`;
+      updateLeaderboardView();
+    }, 4000);
+
+    // Initial Load
+    document.addEventListener('DOMContentLoaded', () => {
+      updateLeaderboardView();
+      initCharts();
+      runSimulation();
+      renderQuestsAndRewards();
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
